@@ -1,26 +1,142 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Theme selection: system preference by default, overridden by
+   <html data-theme="light|dark"> from the theme toggle. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  color-scheme: light;
+  --bg: #fbf7f0; /* warm ivory */
+  --surface: #fffdf9;
+  --surface-2: #f3ece0;
+  --ink: #1b1f2a; /* deep ink */
+  --muted: #5a5f6d;
+  --border: #e5dccb;
+  --border-strong: #cfc3ad;
+  --accent: #c64a32; /* coral, AA with white text */
+  --accent-hover: #ad3f29;
+  --accent-fg: #ffffff;
+  --accent-text: #ad3f29; /* coral for text on ivory */
+  --accent-soft: #fbe4dc;
+  --danger: #b42318;
+  --danger-soft: #fde8e6;
+  --success: #1d7a4a;
+  --ring: #c64a32;
+  --shadow: 0 1px 2px rgb(27 31 42 / 0.06), 0 8px 24px -12px rgb(27 31 42 / 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #12141b;
+    --surface: #191c25;
+    --surface-2: #222632;
+    --ink: #f3eee6;
+    --muted: #a6abb8;
+    --border: #2c3140;
+    --border-strong: #3d4356;
+    --accent: #f0806a;
+    --accent-hover: #f59a87;
+    --accent-fg: #1f0f0b;
+    --accent-text: #f49883;
+    --accent-soft: #3a211c;
+    --danger: #ff8f84;
+    --danger-soft: #3b1d1b;
+    --success: #6fd3a0;
+    --ring: #f0806a;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
   }
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #12141b;
+  --surface: #191c25;
+  --surface-2: #222632;
+  --ink: #f3eee6;
+  --muted: #a6abb8;
+  --border: #2c3140;
+  --border-strong: #3d4356;
+  --accent: #f0806a;
+  --accent-hover: #f59a87;
+  --accent-fg: #1f0f0b;
+  --accent-text: #f49883;
+  --accent-soft: #3a211c;
+  --danger: #ff8f84;
+  --danger-soft: #3b1d1b;
+  --success: #6fd3a0;
+  --ring: #f0806a;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+}
+
+/* Clerk components follow the same tokens in both themes. */
+:root {
+  --clerk-color-primary: var(--accent);
+  --clerk-color-primary-foreground: var(--accent-fg);
+  --clerk-color-background: var(--surface);
+  --clerk-color-foreground: var(--ink);
+  --clerk-color-muted-foreground: var(--muted);
+  --clerk-color-input: var(--surface);
+  --clerk-color-input-foreground: var(--ink);
+  --clerk-color-border: var(--border-strong);
+  --clerk-color-neutral: var(--ink);
+  --clerk-color-danger: var(--danger);
+  --clerk-color-ring: var(--ring);
+  --clerk-color-muted: var(--surface-2);
+  --clerk-border-radius: 0.75rem;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --shadow-card: var(--shadow);
+}
+
+html {
+  background: var(--bg);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Text fields show focus on their wrapper (see components/ui/field.tsx), so
+   the global ring skips them instead of drawing a second outline inside. */
+:focus-visible:not(input, textarea, select) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
