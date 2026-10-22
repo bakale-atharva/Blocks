@@ -21,6 +21,26 @@ import { getOrgContext } from "../lib/auth";
 // ---------------------------------------------------------------------------
 // Shared validators / constants
 // ---------------------------------------------------------------------------
+const documentValidator = v.object({
+  _id: v.id("documents"),
+  _creationTime: v.number(),
+  orgId: v.string(),
+  parentId: v.optional(v.id("documents")),
+  type: v.union(v.literal("folder"), v.literal("page")),
+  title: v.string(),
+  icon: v.optional(v.string()),
+  coverImage: v.optional(v.id("_storage")),
+  isArchived: v.boolean(),
+  archivedAt: v.optional(v.number()),
+  isFavorite: v.boolean(),
+  authorSubject: v.string(),
+});
+
+/** Maximum results returned by search / list-style queries. */
+const SEARCH_LIMIT = 20;
+const LIST_LIMIT = 200;
+const TRASH_LIMIT = 100;
+const FAVORITES_LIMIT = 100;
 
 /**
  * Load a document and assert it belongs to the caller's org. Throws if the
@@ -66,5 +86,36 @@ export const create = mutation({
       authorSubject: subject,
     });
     return id;
+  },
+});
+
+/** Toggle a document's favorite flag. */
+export const toggleFavorite = mutation({
+  args: { id: v.id("documents") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    const doc = await getOwnedDoc(ctx, orgId, args.id);
+    const next = !doc.isFavorite;
+    await ctx.db.patch(args.id, { isFavorite: next });
+    return next;
+  },
+});
+
+/** Favorited, non-archived documents for the active org. Bounded. */
+export const listFavorites = query({
+  args: {},
+  returns: v.array(documentValidator),
+  handler: async (ctx) => {
+    const { orgId } = await getOrgContext(ctx);
+    const docs = await ctx.db
+      .query("documents")
+      .withIndex("by_org_favorite", (q) =>
+        q.eq("orgId", orgId).eq("isFavorite", true),
+      )
+      .take(FAVORITES_LIMIT);
+    return docs.filter((doc) => !doc.isArchived);
+    // Favorited docs that were trashed should not show in the Favorites list
+    return docs.filter((doc) => !doc.isArchived);
   },
 });
