@@ -66,8 +66,8 @@ export async function getOrgContext(ctx: AuthCtx): Promise<OrgContext> {
   const orgId = claims.orgId ?? claims.o?.id ?? undefined;
   const subject = claims.subject;
 
-  if (!orgId || subject) {
-    throw new Error("No active orgamization.");
+  if (!orgId || !subject) {
+    throw new Error("No active organization.");
   }
 
   return {
