@@ -17,18 +17,18 @@ import { openSearch } from "@/components/sidebar/AppSidebar";
  */
 export default function Home() {
   const router = useRouter();
-  // const create = useMutation(api.documents.create);
+  const create = useMutation(api.documents.create);
   const [creating, setCreating] = useState(false);
 
   const onCreate = async () => {
     setCreating(true);
     try {
-      // const id = await create({
-      //   parentId: null,
-      //   type: "page",
-      //   title: "Untitled",
-      // });
-      // router.push(`/doc/${id}`);
+      const id = await create({
+        parentId: null,
+        type: "page",
+        title: "Untitled",
+      });
+      router.push(`/doc/${id}`);
     } catch {
       toast.error("Couldn't Create Page");
       setCreating(false);
