@@ -13,6 +13,29 @@ import { v } from "convex/values";
  * the `documents` row here. The `documents` table only holds tree/metadata.
  */
 export default defineSchema({
+  // Clerk users mirrored into Convex by the Clerk webhook.
+  users: defineTable({
+    externalId: v.string(), // Clerk user id (`user.id`)
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+  }).index("byExternalId", ["externalId"]),
+
+  // Clerk organizations mirrored into Convex by the Clerk webhook.
+  organizations: defineTable({
+    clerkOrgId: v.string(), // Clerk organization id (`organization.id`)
+    name: v.string(),
+    slug: v.optional(v.string()),
+  }).index("byClerkOrgId", ["clerkOrgId"]),
+
+  // Clerk org memberships mirrored into Convex by the Clerk webhook.
+  memberships: defineTable({
+    clerkOrgId: v.string(),
+    clerkUserId: v.string(),
+    role: v.string(),
+  })
+    .index("by_org_user", ["clerkOrgId", "clerkUserId"])
+    .index("by_user", ["clerkUserId"]),
+
   // Org-scoped document tree (folders + pages). Content lives in prosemirror-sync.
   documents: defineTable({
     orgId: v.string(),
@@ -34,4 +57,12 @@ export default defineSchema({
       searchField: "title",
       filterFields: ["orgId", "isArchived"],
     }),
+
+  // Per-org monthly AI usage counter (period is "YYYY-MM"). Quota is enforced
+  // in Convex, not by Clerk billing.
+  aiUsage: defineTable({
+    orgId: v.string(),
+    period: v.string(), // "YYYY-MM"
+    count: v.number(),
+  }).index("by_org_period", ["orgId", "period"]),
 });
