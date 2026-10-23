@@ -43,6 +43,15 @@ const TRASH_LIMIT = 100;
 const FAVORITES_LIMIT = 100;
 
 /**
+ * Upper bound on documents touched by a single recursive archive/restore so
+ * we stay comfortably within Convex transaction limits. A workspace tree with
+ * more descendants than this would need a scheduled continuation; for the
+ * sizes this app targets the bound is never hit in practice.
+ */
+const RECURSIVE_LIMIT = 2000;
+const RECURSIVE_BATCH = 256;
+
+/**
  * Load a document and assert it belongs to the caller's org. Throws if the
  * document does not exist or belongs to a different org (so we never leak the
  * existence of another tenant's data).
@@ -58,6 +67,29 @@ async function getOwnedDoc(
   }
   return doc;
 }
+
+/**
+ * Direct children of `parentId` (or root docs when `parentId` is null) for the
+ * active org. Archived docs are excluded. Used by the recursive sidebar tree.
+ */
+export const getChildren = query({
+  args: { parentId: v.union(v.id("documents"), v.null()) },
+  returns: v.array(documentValidator),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    // `parentId` is stored as `v.optional`, so root docs match `undefined`.
+    const parentId = args.parentId ?? undefined;
+    const children = await ctx.db
+      .query("documents")
+      .withIndex("by_org_parent", (q) =>
+        q.eq("orgId", orgId).eq("parentId", parentId),
+      )
+      .take(LIST_LIMIT);
+    // Exclude archived from the tree view (no dedicated composite index, so we
+    // post-filter the already-bounded child set in memory).
+    return children.filter((doc) => !doc.isArchived);
+  },
+});
 
 /** Create a folder or page under `parentId` (root when null/omitted). */
 export const create = mutation({
@@ -86,6 +118,71 @@ export const create = mutation({
       authorSubject: subject,
     });
     return id;
+  },
+});
+
+/**
+ * Soft-delete a document AND all of its descendants (recursive). We NEVER hard
+ * delete — every touched doc gets `isArchived: true` + `archivedAt`. The walk
+ * is bounded (`RECURSIVE_LIMIT`) and reads children in bounded batches via the
+ * `by_org_parent` index.
+ *
+ * Already-archived descendants keep their original `archivedAt` so an
+ * unrelated earlier deletion is preserved on restore.
+ */
+export const archive = mutation({
+  args: { id: v.id("documents") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    const root = await getOwnedDoc(ctx, orgId, args.id);
+
+    const now = Date.now();
+    let processed = 0;
+
+    // BFS over the subtree. The frontier holds doc ids whose children we still
+    // need to enqueue.
+    const frontier: Id<"documents">[] = [root._id];
+
+    while (frontier.length > 0) {
+      if (processed >= RECURSIVE_LIMIT) {
+        throw new Error("Subtree too large to archive in a single transaction");
+      }
+      const current = frontier.shift()!;
+      const doc = await ctx.db.get(current);
+      // Skip if it vanished or somehow crossed tenants (defensive).
+      if (!doc || doc.orgId !== orgId) continue;
+
+      if (!doc.isArchived) {
+        await ctx.db.patch(current, { isArchived: true, archivedAt: now });
+      }
+      processed++;
+
+      // Enqueue children (both archived and not, so the whole subtree is
+      // consistently marked) in bounded batches.
+      const children = await ctx.db
+        .query("documents")
+        .withIndex("by_org_parent", (q) =>
+          q.eq("orgId", orgId).eq("parentId", current),
+        )
+        .take(RECURSIVE_BATCH);
+      for (const child of children) {
+        frontier.push(child._id);
+      }
+    }
+    return null;
+  },
+});
+
+/** Rename a document. */
+export const rename = mutation({
+  args: { id: v.id("documents"), title: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    await getOwnedDoc(ctx, orgId, args.id);
+    await ctx.db.patch(args.id, { title: args.title });
+    return null;
   },
 });
 
