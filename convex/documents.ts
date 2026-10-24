@@ -174,6 +174,58 @@ export const archive = mutation({
   },
 });
 
+/**
+ * Restore a single archived document back into the tree. Reverses `archive`
+ * for the target doc (clears `isArchived`/`archivedAt`). Descendants stay
+ * archived unless individually restored, matching Notion's per-item restore.
+ *
+ * If the parent of the restored doc is itself still archived, the doc is
+ * re-parented to root so it is reachable in the tree (avoids dangling under an
+ * archived ancestor).
+ */
+export const restore = mutation({
+  args: { id: v.id("documents") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    const doc = await getOwnedDoc(ctx, orgId, args.id);
+
+    let parentId = doc.parentId;
+    if (parentId !== undefined) {
+      const parent = await ctx.db.get(parentId);
+      if (!parent || parent.orgId !== orgId || parent.isArchived) {
+        // Parent is gone or still in the trash — surface at root instead.
+        parentId = undefined;
+      }
+    }
+
+    await ctx.db.patch(args.id, {
+      isArchived: false,
+      archivedAt: undefined,
+      parentId,
+    });
+    return null;
+  },
+});
+
+/** All archived (trashed) documents for the active org. Bounded. */
+export const listTrash = query({
+  args: {},
+  returns: v.array(documentValidator),
+  handler: async (ctx) => {
+    const { orgId } = await getOrgContext(ctx);
+    const docs = await ctx.db
+      .query("documents")
+      .withIndex("by_org_archived", (q) =>
+        q.eq("orgId", orgId).eq("isArchived", true),
+      )
+      .order("desc")
+      .take(TRASH_LIMIT);
+
+    return docs;
+  },
+});
+
 /** Rename a document. */
 export const rename = mutation({
   args: { id: v.id("documents"), title: v.string() },
