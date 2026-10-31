@@ -10,7 +10,9 @@
 
 import type * as documents from "../documents.js";
 import type * as files from "../files.js";
+import type * as presence from "../presence.js";
 import type * as seed from "../seed.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -21,7 +23,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   files: typeof files;
+  presence: typeof presence;
   seed: typeof seed;
+  users: typeof users;
 }>;
 
 /**
@@ -50,4 +54,8 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  prosemirrorSync: import("@convex-dev/prosemirror-sync/_generated/component.js").ComponentApi<"prosemirrorSync">;
+  agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
+  presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
+};

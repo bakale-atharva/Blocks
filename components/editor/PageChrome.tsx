@@ -75,5 +75,12 @@ export default function PageChrome({ docId }: { docId: string }) {
     doc?.coverImage ? { storageId: doc.coverImage } : "skip",
   );
 
+  const setIcon = useMutation(api.documents.setIcon);
+  const setCover = useMutation(api.files.setCover);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [iconOpen, setIconOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
   return <>PageChrome</>;
 }
