@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import AppSidebar from "@/components/sidebar/AppSidebar";
 
+export const instant = false;
+
 export default async function DashboardLayout({
   children,
 }: {
