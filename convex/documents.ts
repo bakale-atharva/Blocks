@@ -91,6 +91,18 @@ export const getChildren = query({
   },
 });
 
+/** A single document by id, scoped to the active org. */
+export const get = query({
+  args: { id: v.id("documents") },
+  returns: v.union(documentValidator, v.null()),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    const doc = await ctx.db.get(args.id);
+    if (!doc || doc.orgId !== orgId) return null;
+    return doc;
+  },
+});
+
 /** Create a folder or page under `parentId` (root when null/omitted). */
 export const create = mutation({
   args: {
@@ -266,5 +278,52 @@ export const listFavorites = query({
     return docs.filter((doc) => !doc.isArchived);
     // Favorited docs that were trashed should not show in the Favorites list
     return docs.filter((doc) => !doc.isArchived);
+  },
+});
+
+/**
+ * Breadcrumb trail from the root down to (and including) the given document,
+ * walking the `parentId` chain. Bounded by `RECURSIVE_LIMIT`. Returns an
+ * ordered array (root first, target last). Returns `[]` if the doc is not in
+ * the caller's org.
+ */
+export const getBreadcrumbs = query({
+  args: { id: v.id("documents") },
+  returns: v.array(
+    v.object({
+      _id: v.id("documents"),
+      title: v.string(),
+      icon: v.optional(v.string()),
+      type: v.union(v.literal("folder"), v.literal("page")),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+
+    const trail: Array<{
+      _id: Id<"documents">;
+      title: string;
+      icon?: string;
+      type: "folder" | "page";
+    }> = [];
+
+    let cursor: Id<"documents"> | undefined = args.id;
+    let hops = 0;
+    while (cursor !== undefined && hops < RECURSIVE_LIMIT) {
+      const doc: Doc<"documents"> | null = await ctx.db.get(cursor);
+      if (!doc || doc.orgId !== orgId) break;
+      trail.push({
+        _id: doc._id,
+        title: doc.title,
+        icon: doc.icon,
+        type: doc.type,
+      });
+      cursor = doc.parentId;
+      hops++;
+    }
+
+    // Built leaf -> root; reverse to root -> leaf for display.
+    trail.reverse();
+    return trail;
   },
 });

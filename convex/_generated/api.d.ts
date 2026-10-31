@@ -9,6 +9,7 @@
  */
 
 import type * as documents from "../documents.js";
+import type * as files from "../files.js";
 import type * as seed from "../seed.js";
 
 import type {
@@ -19,6 +20,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   documents: typeof documents;
+  files: typeof files;
   seed: typeof seed;
 }>;
 
