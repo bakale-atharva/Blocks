@@ -22,7 +22,7 @@ export default function FavoritesSection() {
   const favorites = useQuery(api.documents.listFavorites, {});
   const toggleFavorite = useMutation(api.documents.toggleFavorite);
 
-  // Loading State
+  // Loading state.
   if (favorites === undefined) {
     return (
       <div className="flex flex-col gap-1 px-2">
@@ -34,7 +34,7 @@ export default function FavoritesSection() {
     );
   }
 
-  // Nothing Favorited - render nothing.
+  // Nothing favorited — render nothing.
   if (favorites.length === 0) {
     return null;
   }
@@ -74,14 +74,14 @@ export default function FavoritesSection() {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Remove From Favorites"
+                aria-label="Remove from favorites"
                 className="opacity-0 transition-opacity group-hover/fav:opacity-100 group-focus-within/fav:opacity-100"
                 onClick={async (event) => {
                   event.stopPropagation();
                   try {
                     await toggleFavorite({ id: doc._id });
                   } catch {
-                    toast.error("Couldn't Update Favorite");
+                    toast.error("Couldn't update favorite");
                   }
                 }}
               >
