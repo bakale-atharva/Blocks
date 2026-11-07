@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Blocks
 
-## Getting Started
+Blocks is a multi-tenant block editor. Each Clerk organization gets its own workspace of nested documents. Documents are edited collaboratively with presence, file uploads, and trash and restore, plus organization billing and AI features that are planned.
 
-First, run the development server:
+## Stack
+
+- **Framework:** Next.js 16 (App Router) and React 19.
+- **Backend:** Convex for the database, functions, and file storage. It uses these Convex components:
+  - `prosemirror-sync`
+  - `presence`
+  - `agent`
+- **Auth:** Clerk, with Organizations enabled.
+- **Editor:** BlockNote 0.56, with the `xl-ai` extension.
+- **UI:** Tailwind CSS 4 and shadcn/base-ui.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+pnpm backend
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm frontend
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`pnpm backend` runs `convex dev`. `pnpm frontend` runs `next dev` at http://localhost:3000. The required environment variables are listed in [docs/SETUP.md](docs/SETUP.md).
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Script | Runs |
+|---|---|
+| `pnpm frontend` | `next dev` |
+| `pnpm backend` | `convex dev` |
+| `pnpm build` | `next build` |
+| `pnpm start` | `next start` |
+| `pnpm lint` | `eslint` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To type check, run:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm exec tsc --noEmit --incremental false
+```
 
-## Deploy on Vercel
+## Layout
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Path | Contents |
+|---|---|
+| `app/` | Routes: dashboard, documents at `doc/[id]`, billing, sign-in, and sign-up |
+| `components/` | The editor, sidebar, presence, providers, and UI primitives |
+| `convex/` | Schema (fixed), documents, files, presence, ProseMirror sync, and users |
+| `lib/` | Org auth context (`getOrgContext`), upload helper, and utilities |
+| `graphify-out/` | Code map: `graph.html`, `graph.json`, and `GRAPH_REPORT.md` |
+| `docs/` | Setup, baseline audit, and roadmap |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Docs
+
+- [docs/SETUP.md](docs/SETUP.md) covers prerequisites, environment, and running locally.
+- [docs/BASELINE.md](docs/BASELINE.md) covers the Phase 0 audit, check results, and known defects.
+- [docs/ROADMAP.md](docs/ROADMAP.md) covers the phases and delivery rules.
+
+## Status
+
+The Phase 0 baseline is published. Known failures, including the `tsc` and `build` type conflict, are documented in `docs/BASELINE.md` and tracked in the Linear project [Blocks](https://linear.app/atharva-bakale-industries/project/blocks-1de76af79ade).

@@ -17,6 +17,17 @@ import { getOrgContext } from "../lib/auth";
  * Load a document and assert it belongs to the caller's org. Throws if the
  * document is missing or owned by another tenant.
  */
+async function getOwnedDoc(
+  ctx: QueryCtx | MutationCtx,
+  orgId: string,
+  id: Id<"documents">,
+): Promise<Doc<"documents">> {
+  const doc = await ctx.db.get(id);
+  if (!doc || doc.orgId !== orgId) {
+    throw new Error("Document not found");
+  }
+  return doc;
+}
 
 /**
  * Generate a short-lived upload URL the client POSTs a file to. Requires an
@@ -42,5 +53,20 @@ export const getFileUrl = query({
   handler: async (ctx, args) => {
     await getOrgContext(ctx);
     return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+/**
+ * Set a document's cover image to an already-uploaded storage object. The
+ * document must belong to the caller's active org.
+ */
+export const setCover = mutation({
+  args: { id: v.id("documents"), storageId: v.id("_storage") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    await getOwnedDoc(ctx, orgId, args.id);
+    await ctx.db.patch(args.id, { coverImage: args.storageId });
+    return null;
   },
 });

@@ -1,0 +1,19 @@
+# Map application source, not dependencies, tooling templates, or generated data.
+node_modules/
+.next/
+out/
+build/
+coverage/
+.git/
+.agents/
+.claude/
+.codex/
+.superpowers/
+convex/_generated/
+graphify-out/
+.env*
+*.pem
+*.key
+*.tsbuildinfo
+pnpm-lock.yaml
+skills-lock.json

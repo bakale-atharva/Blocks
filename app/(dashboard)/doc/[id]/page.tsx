@@ -52,7 +52,7 @@ export default function DocumentPage() {
         <div className="mx-auto w-full max-w-3xl px-4 py-6">
           <PageChrome docId={docId} />
           <div className="mt-4">
-            <Editor />
+            <Editor docId={docId} />
           </div>
         </div>
       </div>

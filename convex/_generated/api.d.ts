@@ -11,6 +11,7 @@
 import type * as documents from "../documents.js";
 import type * as files from "../files.js";
 import type * as presence from "../presence.js";
+import type * as prosemirror from "../prosemirror.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 
@@ -24,6 +25,7 @@ declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   files: typeof files;
   presence: typeof presence;
+  prosemirror: typeof prosemirror;
   seed: typeof seed;
   users: typeof users;
 }>;

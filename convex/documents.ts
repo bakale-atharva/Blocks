@@ -327,3 +327,15 @@ export const getBreadcrumbs = query({
     return trail;
   },
 });
+
+/** Set (or clear) a document's emoji icon. Lives here per the contract. */
+export const setIcon = mutation({
+  args: { id: v.id("documents"), icon: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    await getOwnedDoc(ctx, orgId, args.id);
+    await ctx.db.patch(args.id, { icon: args.icon });
+    return null;
+  },
+});
