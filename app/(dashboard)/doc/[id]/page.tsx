@@ -8,6 +8,7 @@ import Breadcrumbs from "@/components/editor/Breadcrumbs";
 import PageChrome from "@/components/editor/PageChrome";
 import DocPresence from "@/components/presence/DocPresence";
 import AgentChat from "@/components/editor/AgentChat";
+import ArchivedBanner from "@/components/editor/ArchivedBanner";
 
 /**
  * Per-document workspace page.
@@ -46,6 +47,9 @@ export default function DocumentPage() {
         <Breadcrumbs docId={docId} />
         {orgId ? <DocPresence orgId={orgId} docId={docId} /> : null}
       </header>
+
+      {/* Trashed documents get a Restore banner */}
+      <ArchivedBanner docId={docId} />
 
       {/* Scrollable document body */}
       <div className="min-h-0 flex-1 overflow-y-auto">

@@ -7,20 +7,26 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/convex/_generated/api";
+import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import DocumentItem from "@/components/sidebar/DocumentItem";
+import { useDocumentDrop } from "@/components/sidebar/useDocumentDrop";
 
 /**
  * Root of the recursive document tree. Subscribes to the org's top-level
  * documents (`parentId: null`) and renders a `DocumentItem` per node, which
  * recurses into its own children on expand.
+ *
+ * The "Workspace" header is the root drop target: dropping a row there moves
+ * it back to the top level.
  */
 export default function DocumentTree() {
   const router = useRouter();
   const roots = useQuery(api.documents.getChildren, { parentId: null });
   const create = useMutation(api.documents.create);
+  const { isOver, dropProps } = useDocumentDrop(null);
 
   const onCreateRoot = React.useCallback(async () => {
     try {
@@ -37,7 +43,13 @@ export default function DocumentTree() {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between px-2">
+      <div
+        {...dropProps}
+        className={cn(
+          "flex items-center justify-between rounded-md px-2",
+          isOver && "bg-primary/10 ring-1 ring-primary/40",
+        )}
+      >
         <span className="text-xs font-medium text-muted-foreground">
           Workspace
         </span>

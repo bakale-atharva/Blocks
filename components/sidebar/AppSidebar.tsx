@@ -1,5 +1,6 @@
 "use client";
 
+import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import { Search } from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,9 +22,15 @@ export function openSearch() {
 }
 
 /**
- * The dashboard left sidebar. Composes the search trigger, the favorites
- * section, the recursive document tree, and the trash entry. All data is
- * org-scoped and reactive via Convex `useQuery` inside the child components.
+ * The dashboard left sidebar. Composes the workspace switcher and account
+ * menu, the search trigger, the favorites section, the recursive document
+ * tree, and the trash entry. All data is org-scoped and reactive via Convex
+ * `useQuery` inside the child components.
+ *
+ * Switching organizations changes the Clerk session's active org. The Convex
+ * client then fetches a token for the new org and every query re-runs in that
+ * tenant. The switcher also navigates home, because an open document belongs
+ * to the org being left.
  */
 export default function AppSidebar() {
   return (
@@ -31,7 +38,26 @@ export default function AppSidebar() {
       aria-label="Workspace Navigation"
       className="flex h-full w-64 shrink-0 flex-col border-r bg-muted/30"
     >
-      <div className="p-2">
+      <div className="flex items-center gap-1 p-2">
+        <div className="min-w-0 flex-1">
+          <OrganizationSwitcher
+            hidePersonal
+            afterSelectOrganizationUrl="/"
+            afterCreateOrganizationUrl="/"
+            afterLeaveOrganizationUrl="/select-org"
+            appearance={{
+              elements: {
+                rootBox: "w-full",
+                organizationSwitcherTrigger:
+                  "w-full justify-between rounded-md px-2 py-1.5",
+              },
+            }}
+          />
+        </div>
+        <UserButton />
+      </div>
+
+      <div className="px-2 pb-2">
         <button
           type="button"
           onClick={openSearch}
@@ -39,7 +65,7 @@ export default function AppSidebar() {
         >
           <Search className="size-4 shrink-0" />
           <span className="flex-1 text-left">Search</span>
-          <kbd className="pointer-events-none hidden h-5 items-center gap-0.5 rounded border bg-background px-1.5 font-mono  text-muted-foreground sm:inline-flex">
+          <kbd className="pointer-events-none hidden h-5 items-center gap-0.5 rounded border bg-background px-1.5 font-mono text-[10px] text-muted-foreground sm:inline-flex">
             <span className="text-xs">⌘</span>K
           </kbd>
         </button>

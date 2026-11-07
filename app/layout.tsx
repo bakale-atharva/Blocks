@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexClientProvider } from "@/components/providers/convex-client-provider";
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -29,9 +30,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full anti-aliased`}
     >
       <body className="min-h-full flex flex-col">
-        <ClerkProvider>
+        <ClerkProvider taskUrls={{ "choose-organization": "/select-org" }}>
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </ClerkProvider>
+        <Toaster position="bottom-right" />
       </body>
     </html>
   );

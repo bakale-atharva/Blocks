@@ -26,17 +26,34 @@ Create `.env.local` in the repo root. It is gitignored, so never commit it. It n
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Browser | The Clerk publishable key |
 | `CLERK_SECRET_KEY` | Next.js server | The Clerk secret key |
 
-Set this one on the Convex deployment, not in `.env.local`:
+Set these on the Convex deployment, not in `.env.local`:
 
 | Variable | Purpose |
 |---|---|
 | `CLERK_FRONTEND_API_URL` | The Clerk issuer domain, read by `convex/auth.config.ts` |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | The signing secret of the Clerk webhook endpoint, read by `convex/http.ts` |
 
-To set it on the deployment, run:
+To set them on the deployment, run:
 
 ```bash
 npx convex env set CLERK_FRONTEND_API_URL <your-clerk-frontend-api-url>
 ```
+
+```bash
+npx convex env set CLERK_WEBHOOK_SIGNING_SECRET <your-webhook-signing-secret>
+```
+
+## Clerk configuration
+
+Every workspace is a Clerk organization, so the Clerk instance needs:
+
+1. **Organizations** enabled, with **personal accounts** turned off. Then Clerk gives new users the `choose-organization` session task, and `ClerkProvider` sends them to `/select-org`.
+2. **A webhook endpoint** (Dashboard → Webhooks → Add endpoint):
+   - URL: `https://<your-deployment>.convex.site/clerk-webhook`. This is the Convex site URL, not the `.convex.cloud` one.
+   - Events: `user.created`, `user.updated`, `user.deleted`, `organization.created`, `organization.updated`, `organization.deleted`, `organizationMembership.created`, `organizationMembership.updated`, and `organizationMembership.deleted`.
+   - Copy the endpoint's signing secret into `CLERK_WEBHOOK_SIGNING_SECRET`, as above.
+
+The webhook mirrors users, organizations, and memberships into the Convex tables of the same names. Until it has seen an organization, membership checks for that org fall back to the Clerk session token alone.
 
 ## Run
 
