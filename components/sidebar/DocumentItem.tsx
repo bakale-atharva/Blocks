@@ -29,6 +29,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  startDocumentDrag,
+  useDocumentDrop,
+} from "@/components/sidebar/useDocumentDrop";
 
 /**
  * A single node in the recursive document tree.
@@ -36,6 +40,9 @@ import {
  * Renders its own row (icon + title + actions) and, when expanded, lazily
  * subscribes to its children via `api.documents.getChildren` and renders a
  * nested `DocumentItem` per child. Indentation grows with `depth`.
+ *
+ * Each row can be dragged, and is a drop target: dropping another row on it
+ * moves that document inside this one (`documents.move`) and expands it.
  */
 export default function DocumentItem({
   document,
@@ -64,6 +71,9 @@ export default function DocumentItem({
   const toggleFavorite = useMutation(api.documents.toggleFavorite);
 
   const indentPadding = depth * 12 + 8;
+
+  const expand = React.useCallback(() => setExpanded(true), []);
+  const { isOver, dropProps } = useDocumentDrop(document._id, expand);
 
   const onSelect = React.useCallback(() => {
     router.push(`/doc/${document._id}`);
@@ -139,6 +149,9 @@ export default function DocumentItem({
       <div
         role="button"
         tabIndex={0}
+        draggable={!isRenaming}
+        onDragStart={(event) => startDocumentDrag(event, document._id)}
+        {...dropProps}
         onClick={isRenaming ? undefined : onSelect}
         onKeyDown={(event) => {
           if (isRenaming) return;
@@ -149,8 +162,9 @@ export default function DocumentItem({
         }}
         style={{ paddingLeft: indentPadding }}
         className={cn(
-          "group/item flex h-7 items-center gap-1 rounded-md pr-1 text-sm text-muted-foreground transition-colors, hover:bg-muted hover:text-foreground",
+          "group/item flex h-7 items-center gap-1 rounded-md pr-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
           isActive && "bg-muted text-foreground",
+          isOver && "bg-primary/10 text-foreground ring-1 ring-primary/40",
         )}
       >
         <button

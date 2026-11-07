@@ -76,3 +76,44 @@ export async function getOrgContext(ctx: AuthCtx): Promise<OrgContext> {
     orgRole: claims.org_role ?? claims.o?.rol ?? undefined,
   };
 }
+
+export const NOT_A_MEMBER = "You are no longer a member of this organization.";
+
+/**
+ * `getOrgContext` plus a cross-check against the `memberships` mirror that
+ * the Clerk webhook keeps (`convex/clerkSync.ts`). Use it in sensitive
+ * mutations.
+ *
+ * The JWT is still the authority for which org the caller is in. This check
+ * closes the gap between a member being removed in Clerk and their
+ * short-lived session token expiring.
+ *
+ * It only enforces once the org has been mirrored, meaning its
+ * `organizations` row exists. Until the webhook is configured and has seen
+ * the org, it falls back to the JWT alone, so a missing webhook can't lock
+ * every member out.
+ */
+export async function requireMember(
+  ctx: QueryCtx | MutationCtx,
+): Promise<OrgContext> {
+  const org = await getOrgContext(ctx);
+
+  const mirroredOrg = await ctx.db
+    .query("organizations")
+    .withIndex("byClerkOrgId", (q) => q.eq("clerkOrgId", org.orgId))
+    .unique();
+  if (!mirroredOrg) {
+    return org;
+  }
+
+  const membership = await ctx.db
+    .query("memberships")
+    .withIndex("by_org_user", (q) =>
+      q.eq("clerkOrgId", org.orgId).eq("clerkUserId", org.subject),
+    )
+    .unique();
+  if (!membership) {
+    throw new Error(NOT_A_MEMBER);
+  }
+  return org;
+}

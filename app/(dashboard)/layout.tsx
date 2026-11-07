@@ -3,6 +3,8 @@ import { Suspense, type ReactNode } from "react";
 import AppSidebar from "@/components/sidebar/AppSidebar";
 import RequireAuth from "@/components/auth/RequireAuth";
 import SignedOutRedirect from "@/components/auth/SignedOutRedirect";
+import RequireOrg from "@/components/auth/RequireOrg";
+import SearchCommand from "@/components/sidebar/SearchCommand";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const instant = false;
@@ -24,11 +26,14 @@ export default function DashboardLayout({
     <Suspense fallback={<WorkspaceSkeleton />}>
       <RequireAuth>
         <SignedOutRedirect>
-          <div className="flex h-screen w-full overflow-hidden">
-            <AppSidebar />
+          <RequireOrg>
+            <div className="flex h-screen w-full overflow-hidden">
+              <AppSidebar />
 
-            <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
-          </div>
+              <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+            </div>
+            <SearchCommand />
+          </RequireOrg>
         </SignedOutRedirect>
       </RequireAuth>
     </Suspense>

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { components } from "./_generated/api";
 import { Presence } from "@convex-dev/presence";
@@ -26,11 +26,29 @@ import { getOrgDocByRawId } from "../lib/docAccess";
  */
 export const presence = new Presence(components.presence);
 
-/** Display data stored per room user and surfaced by `list`. */
-type PresenceData = {
-  name?: string;
-  image?: string;
-};
+/**
+ * Display data stored per room user and surfaced by `list`. `heartbeat` is the
+ * only writer, so this is the only shape the server stores.
+ */
+const presenceDataValidator = v.object({
+  name: v.optional(v.string()),
+  image: v.optional(v.string()),
+});
+type PresenceData = Infer<typeof presenceDataValidator>;
+
+/**
+ * Narrow the component's untyped room-user `data` to `PresenceData`. The
+ * component stores `data` as `any`, so read it field by field and drop
+ * anything unexpected, rather than casting it.
+ */
+function toPresenceData(data: unknown): PresenceData {
+  if (typeof data !== "object" || data === null) return {};
+  const { name, image } = data as Record<string, unknown>;
+  return {
+    name: typeof name === "string" ? name : undefined,
+    image: typeof image === "string" ? image : undefined,
+  };
+}
 
 /**
  * Validate a client-supplied room id against the caller's tenant and return
@@ -122,7 +140,7 @@ export const list = query({
       lastDisconnected: v.number(),
       name: v.optional(v.string()),
       image: v.optional(v.string()),
-      data: v.optional(v.any()),
+      data: presenceDataValidator,
     }),
   ),
   handler: async (ctx, { roomToken }) => {
@@ -130,14 +148,14 @@ export const list = query({
 
     const entries = await presence.list(ctx, roomToken);
     return entries.map((entry) => {
-      const data = (entry.data ?? {}) as PresenceData;
+      const data = toPresenceData(entry.data);
       return {
         userId: entry.userId,
         online: entry.online,
         lastDisconnected: entry.lastDisconnected,
         name: data.name,
         image: data.image,
-        data: entry.data,
+        data,
       };
     });
   },

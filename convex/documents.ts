@@ -1,7 +1,7 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { getOrgContext } from "../lib/auth";
+import { getOrgContext, requireMember } from "../lib/auth";
 import { getOrgDoc } from "../lib/docAccess";
 
 /**
@@ -40,6 +40,7 @@ const documentValidator = v.object({
 const LIST_LIMIT = 200;
 const TRASH_LIMIT = 100;
 const FAVORITES_LIMIT = 100;
+const SEARCH_LIMIT = 20;
 
 /**
  * Upper bound on documents touched by a single recursive archive/restore so
@@ -99,7 +100,10 @@ export const create = mutation({
     // Validate the parent (if any) belongs to this org before linking.
     const parentId = args.parentId ?? undefined;
     if (parentId !== undefined) {
-      await getOrgDoc(ctx, orgId, parentId);
+      const parent = await getOrgDoc(ctx, orgId, parentId);
+      if (parent.isArchived) {
+        throw new ConvexError("Can't add a page inside a trashed document");
+      }
     }
 
     const id = await ctx.db.insert("documents", {
@@ -128,7 +132,7 @@ export const archive = mutation({
   args: { id: v.id("documents") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const { orgId } = await getOrgContext(ctx);
+    const { orgId } = await requireMember(ctx);
     const root = await getOrgDoc(ctx, orgId, args.id);
 
     const now = Date.now();
@@ -169,22 +173,27 @@ export const archive = mutation({
 });
 
 /**
- * Restore a single archived document back into the tree. Reverses `archive`
- * for the target doc (clears `isArchived`/`archivedAt`). Descendants stay
- * archived unless individually restored, matching Notion's per-item restore.
+ * Restore an archived document and the part of its subtree that was archived
+ * in the same operation.
  *
- * If the parent of the restored doc is itself still archived, the doc is
- * re-parented to root so it is reachable in the tree (avoids dangling under an
- * archived ancestor).
+ * `archive` stamps every document it trashes with one shared `archivedAt`, and
+ * leaves documents that were already trashed with their earlier timestamp. So
+ * restore walks down from the target and brings back only descendants whose
+ * `archivedAt` matches the target's. A descendant trashed earlier, on its own,
+ * stays in the trash, and so does everything under it.
+ *
+ * If the target's parent is still archived (or gone), the target moves to the
+ * root so it is reachable in the tree.
  */
 export const restore = mutation({
   args: { id: v.id("documents") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const { orgId } = await getOrgContext(ctx);
-    const doc = await getOrgDoc(ctx, orgId, args.id);
+    const { orgId } = await requireMember(ctx);
+    const root = await getOrgDoc(ctx, orgId, args.id);
+    if (!root.isArchived) return null;
 
-    let parentId = doc.parentId;
+    let parentId = root.parentId;
     if (parentId !== undefined) {
       const parent = await ctx.db.get(parentId);
       if (!parent || parent.orgId !== orgId || parent.isArchived) {
@@ -192,13 +201,124 @@ export const restore = mutation({
         parentId = undefined;
       }
     }
-
-    await ctx.db.patch(args.id, {
+    await ctx.db.patch(root._id, {
       isArchived: false,
       archivedAt: undefined,
       parentId,
     });
+
+    // Documents archived before `archivedAt` existed have no timestamp to
+    // match on, so only the target itself comes back.
+    const operationAt = root.archivedAt;
+    if (operationAt === undefined) return null;
+
+    let processed = 1;
+    const frontier: Id<"documents">[] = [root._id];
+    while (frontier.length > 0) {
+      const current = frontier.shift()!;
+      const children = await ctx.db
+        .query("documents")
+        .withIndex("by_org_parent", (q) =>
+          q.eq("orgId", orgId).eq("parentId", current),
+        )
+        .take(RECURSIVE_BATCH);
+      for (const child of children) {
+        if (!child.isArchived || child.archivedAt !== operationAt) continue;
+        if (processed >= RECURSIVE_LIMIT) {
+          throw new Error(
+            "Subtree too large to restore in a single transaction",
+          );
+        }
+        await ctx.db.patch(child._id, {
+          isArchived: false,
+          archivedAt: undefined,
+        });
+        processed++;
+        frontier.push(child._id);
+      }
+    }
     return null;
+  },
+});
+
+/**
+ * Move a document under a new parent, or to the root when `parentId` is null.
+ *
+ * Rejected when:
+ * - the document or the new parent isn't in the caller's org (both reads go
+ *   through `getOrgDoc`, so another tenant's id looks like a missing one);
+ * - either one is in the trash;
+ * - the new parent is the document itself or one of its descendants, which
+ *   would cut the subtree out of the tree as a cycle.
+ *
+ * Folders and pages can both hold children, so the parent's type isn't
+ * restricted.
+ */
+export const move = mutation({
+  args: {
+    id: v.id("documents"),
+    parentId: v.union(v.id("documents"), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { orgId } = await requireMember(ctx);
+    const doc = await getOrgDoc(ctx, orgId, args.id);
+    if (doc.isArchived) {
+      throw new ConvexError("Can't move a trashed document");
+    }
+
+    const newParentId = args.parentId ?? undefined;
+    if (newParentId === doc.parentId) return null;
+
+    if (newParentId !== undefined) {
+      const parent = await getOrgDoc(ctx, orgId, newParentId);
+      if (parent.isArchived) {
+        throw new ConvexError("Can't move a document into the trash");
+      }
+
+      // Walk up from the new parent. Reaching the moved document means the
+      // new parent sits inside its subtree.
+      let cursor: Id<"documents"> | undefined = parent._id;
+      let hops = 0;
+      while (cursor !== undefined) {
+        if (cursor === doc._id) {
+          throw new ConvexError("Can't move a document inside itself");
+        }
+        if (++hops > RECURSIVE_LIMIT) {
+          throw new ConvexError("Document tree is too deep");
+        }
+        const ancestor: Doc<"documents"> | null = await ctx.db.get(cursor);
+        if (!ancestor || ancestor.orgId !== orgId) break;
+        cursor = ancestor.parentId;
+      }
+    }
+
+    await ctx.db.patch(doc._id, { parentId: newParentId });
+    return null;
+  },
+});
+
+/**
+ * Title search over the org's documents, through the `search_title` index.
+ * Live documents by default; `archived: true` searches the trash instead.
+ * Results come back in relevance order. An empty query returns nothing.
+ */
+export const search = query({
+  args: { query: v.string(), archived: v.optional(v.boolean()) },
+  returns: v.array(documentValidator),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    const term = args.query.trim();
+    if (term.length === 0) return [];
+    return await ctx.db
+      .query("documents")
+      .withSearchIndex("search_title", (q) =>
+        q
+          .search("title", term)
+          .eq("orgId", orgId)
+          .eq("isArchived", args.archived ?? false),
+      )
+      .take(SEARCH_LIMIT);
   },
 });
 
@@ -257,7 +377,6 @@ export const listFavorites = query({
         q.eq("orgId", orgId).eq("isFavorite", true),
       )
       .take(FAVORITES_LIMIT);
-    return docs.filter((doc) => !doc.isArchived);
     // Favorited docs that were trashed should not show in the Favorites list
     return docs.filter((doc) => !doc.isArchived);
   },

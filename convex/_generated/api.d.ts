@@ -8,8 +8,10 @@
  * @module
  */
 
+import type * as clerkSync from "../clerkSync.js";
 import type * as documents from "../documents.js";
 import type * as files from "../files.js";
+import type * as http from "../http.js";
 import type * as presence from "../presence.js";
 import type * as prosemirror from "../prosemirror.js";
 import type * as seed from "../seed.js";
@@ -22,8 +24,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  clerkSync: typeof clerkSync;
   documents: typeof documents;
   files: typeof files;
+  http: typeof http;
   presence: typeof presence;
   prosemirror: typeof prosemirror;
   seed: typeof seed;
