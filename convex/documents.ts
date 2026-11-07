@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getOrgContext } from "../lib/auth";
+import { getOrgDoc } from "../lib/docAccess";
 
 /**
  * Org-scoped document tree + Notion polish (search / favorites / trash).
@@ -36,8 +36,7 @@ const documentValidator = v.object({
   authorSubject: v.string(),
 });
 
-/** Maximum results returned by search / list-style queries. */
-const SEARCH_LIMIT = 20;
+/** Maximum results returned by list-style queries. */
 const LIST_LIMIT = 200;
 const TRASH_LIMIT = 100;
 const FAVORITES_LIMIT = 100;
@@ -50,23 +49,6 @@ const FAVORITES_LIMIT = 100;
  */
 const RECURSIVE_LIMIT = 2000;
 const RECURSIVE_BATCH = 256;
-
-/**
- * Load a document and assert it belongs to the caller's org. Throws if the
- * document does not exist or belongs to a different org (so we never leak the
- * existence of another tenant's data).
- */
-async function getOwnedDoc(
-  ctx: QueryCtx | MutationCtx,
-  orgId: string,
-  id: Id<"documents">,
-): Promise<Doc<"documents">> {
-  const doc = await ctx.db.get(id);
-  if (!doc || doc.orgId !== orgId) {
-    throw new Error("Document not found");
-  }
-  return doc;
-}
 
 /**
  * Direct children of `parentId` (or root docs when `parentId` is null) for the
@@ -117,7 +99,7 @@ export const create = mutation({
     // Validate the parent (if any) belongs to this org before linking.
     const parentId = args.parentId ?? undefined;
     if (parentId !== undefined) {
-      await getOwnedDoc(ctx, orgId, parentId);
+      await getOrgDoc(ctx, orgId, parentId);
     }
 
     const id = await ctx.db.insert("documents", {
@@ -147,7 +129,7 @@ export const archive = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
-    const root = await getOwnedDoc(ctx, orgId, args.id);
+    const root = await getOrgDoc(ctx, orgId, args.id);
 
     const now = Date.now();
     let processed = 0;
@@ -200,7 +182,7 @@ export const restore = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
-    const doc = await getOwnedDoc(ctx, orgId, args.id);
+    const doc = await getOrgDoc(ctx, orgId, args.id);
 
     let parentId = doc.parentId;
     if (parentId !== undefined) {
@@ -244,7 +226,7 @@ export const rename = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
-    await getOwnedDoc(ctx, orgId, args.id);
+    await getOrgDoc(ctx, orgId, args.id);
     await ctx.db.patch(args.id, { title: args.title });
     return null;
   },
@@ -256,7 +238,7 @@ export const toggleFavorite = mutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
-    const doc = await getOwnedDoc(ctx, orgId, args.id);
+    const doc = await getOrgDoc(ctx, orgId, args.id);
     const next = !doc.isFavorite;
     await ctx.db.patch(args.id, { isFavorite: next });
     return next;
@@ -334,7 +316,7 @@ export const setIcon = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
-    await getOwnedDoc(ctx, orgId, args.id);
+    await getOrgDoc(ctx, orgId, args.id);
     await ctx.db.patch(args.id, { icon: args.icon });
     return null;
   },

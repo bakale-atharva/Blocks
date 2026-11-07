@@ -68,7 +68,7 @@ pnpm exec tsc --noEmit --incremental false
 pnpm build
 ```
 
-At the Phase 0 baseline, `tsc` and `build` fail on a known AI SDK type conflict (ATH-259). The details are in `BASELINE.md`.
+All three checks pass as of Phase 1, and lint reports zero warnings. The Phase 0 failures are recorded in `BASELINE.md`.
 
 ## Code map
 

@@ -1,8 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
-import type { Doc, Id } from "./_generated/dataModel";
 import { getOrgContext } from "../lib/auth";
+import { getOrgDoc } from "../lib/docAccess";
 
 /**
  * Convex File Storage helpers for document covers/images.
@@ -11,23 +10,10 @@ import { getOrgContext } from "../lib/auth";
  * we NEVER accept `orgId`/`userId` as an argument for authorization. `setIcon`
  * deliberately lives in `convex/documents.ts` (per the integration contract),
  * NOT here.
+ *
+ * Tenant ownership of a document is checked by `getOrgDoc` in
+ * `lib/docAccess.ts`.
  */
-
-/**
- * Load a document and assert it belongs to the caller's org. Throws if the
- * document is missing or owned by another tenant.
- */
-async function getOwnedDoc(
-  ctx: QueryCtx | MutationCtx,
-  orgId: string,
-  id: Id<"documents">,
-): Promise<Doc<"documents">> {
-  const doc = await ctx.db.get(id);
-  if (!doc || doc.orgId !== orgId) {
-    throw new Error("Document not found");
-  }
-  return doc;
-}
 
 /**
  * Generate a short-lived upload URL the client POSTs a file to. Requires an
@@ -65,7 +51,7 @@ export const setCover = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
-    await getOwnedDoc(ctx, orgId, args.id);
+    await getOrgDoc(ctx, orgId, args.id);
     await ctx.db.patch(args.id, { coverImage: args.storageId });
     return null;
   },

@@ -1,22 +1,26 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
 /**
- * Clerk request proxy (Next 16 renamed the `middleware.ts` convention to
- * `proxy.ts`; the Clerk export remains `clerkMiddleware`).
+ * Clerk request proxy. Next 16 renamed the `middleware.ts` convention to
+ * `proxy.ts`, and the Clerk export is still `clerkMiddleware`.
  *
- * The authenticated workspace lives at the root (`/`, `/billing`, `/doc/[id]`)
- * via the `(dashboard)` route group — route groups do NOT add a URL segment,
- * so we protect everything EXCEPT the explicitly public routes (sign-in/up).
- * Unauthenticated requests to protected routes are redirected to sign-in;
- * `/api/ai` is protected too (it also re-checks auth server-side).
+ * It makes no auth decisions. Clerk deprecated path-based gating with its
+ * route matcher helper, because path matching can diverge from how Next.js
+ * routes a request and leave resources reachable. Each resource now protects
+ * itself:
+ *
+ * - `app/(dashboard)/layout.tsx` gates the workspace with `<RequireAuth>`,
+ *   which calls `auth.protect()` inside Suspense.
+ * - Server Component pages call `auth.protect()` at the top, such as
+ *   `app/(dashboard)/billing/page.tsx`.
+ * - Every Convex query and mutation derives the tenant from the Clerk JWT
+ *   through `getOrgContext` in `lib/auth.ts`. Convex is the source of truth
+ *   for data access.
+ *
+ * `clerkMiddleware()` is still required so the Clerk auth state is available
+ * on the server.
  */
-const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
-
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect();
-  }
-});
+export default clerkMiddleware();
 
 export const config = {
   matcher: [

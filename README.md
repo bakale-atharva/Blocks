@@ -9,8 +9,9 @@ Blocks is a multi-tenant block editor. Each Clerk organization gets its own work
   - `prosemirror-sync`
   - `presence`
   - `agent`
-- **Auth:** Clerk, with Organizations enabled.
-- **Editor:** BlockNote 0.56, with the `xl-ai` extension.
+- **Auth:** Clerk, with Organizations enabled. Auth is checked at each resource: `proxy.ts` is a bare `clerkMiddleware()`, and the dashboard layout calls `auth.protect()`.
+- **Editor:** BlockNote 0.57.0 (all `@blocknote/*` packages pinned exactly), with the `xl-ai` extension.
+- **AI:** AI SDK 6 (`ai@6.0.319`, a single version across the tree) and the OpenRouter provider. Every model call runs on the server.
 - **UI:** Tailwind CSS 4 and shadcn/base-ui.
 
 ## Quick start
@@ -64,4 +65,4 @@ pnpm exec tsc --noEmit --incremental false
 
 ## Status
 
-The Phase 0 baseline is published. Known failures, including the `tsc` and `build` type conflict, are documented in `docs/BASELINE.md` and tracked in the Linear project [Blocks](https://linear.app/atharva-bakale-industries/project/blocks-1de76af79ade).
+Phase 1 (compatibility and authorization) is in review. `pnpm lint`, `tsc`, and `pnpm build` all pass. The Phase 0 audit is in `docs/BASELINE.md`, and the work is tracked in the Linear project [Blocks](https://linear.app/atharva-bakale-industries/project/blocks-1de76af79ade).
