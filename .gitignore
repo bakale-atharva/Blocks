@@ -40,12 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Installed skills: platform-specific binaries are reinstalled from skills-lock.json.
-/.agents/skills/*/scripts/bin/
+# Local agent tooling (installed skills and hooks; reinstall from skills-lock.json).
+/.agents/
+/.codex/
+# Platform-specific skill binaries.
 /.claude/skills/*/scripts/bin/
 
-# Graphify: version the portable map, report, and interactive view only.
-/graphify-out/*
-!/graphify-out/graph.json
-!/graphify-out/GRAPH_REPORT.md
-!/graphify-out/graph.html
+# Graphify output is local only; regenerate with the commands in docs/SETUP.md.
+/graphify-out/

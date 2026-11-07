@@ -26,7 +26,7 @@ Linear project: [Blocks](https://linear.app/atharva-bakale-industries/project/bl
 | ?? | `app/(dashboard)/billing/` | Organization pricing page |
 | ?? | `convex/prosemirror.ts` | Collaborative sync with org-scoped access checks |
 | ?? | `convex/_generated/ai/` | Convex AI guidelines |
-| ?? | `.agents/`, `.claude/`, `.codex/`, `skills-lock.json` | Installed Clerk, Convex, and Impeccable skills, agents, and hooks |
+| ?? | `.claude/`, `skills-lock.json` | Installed Clerk, Convex, and Impeccable skills and agents. `.agents/` and `.codex/` were committed in `f02fbfa` and untracked in the next commit; they are now local only |
 | ?? | `CLAUDE.md`, `.graphifyignore` | Agent instructions and Graphify exclusions |
 
 ### Excluded from version control
@@ -34,8 +34,9 @@ Linear project: [Blocks](https://linear.app/atharva-bakale-industries/project/bl
 - **`.env.local`** (secrets) is excluded by `.env*`.
 - **`.claude/settings.local.json`** is excluded by the global git ignore.
 - **`.impeccable/config.local.json`** is excluded by `.git/info/exclude`.
-- **`/.agents/skills/*/scripts/bin/` and `/.claude/skills/*/scripts/bin/`** hold the darwin-arm64 Impeccable binaries, 17.7 MB each. They are machine-specific and reinstalled from `skills-lock.json`. If a binary is missing, the Impeccable hooks in `.codex/hooks.json` and the local Claude settings skip themselves instead of failing.
-- **`graphify-out/` runtime files** (cache, manifest, analysis, root) are excluded.
+- **`.agents/` and `.codex/`** hold local agent tooling: installed skills and Codex hooks. Reinstall them from `skills-lock.json`.
+- **`/.claude/skills/*/scripts/bin/`** holds the darwin-arm64 Impeccable binary, 17.7 MB. It is machine-specific. If it is missing, the Impeccable hooks skip themselves instead of failing.
+- **`graphify-out/`** is excluded entirely. Each machine regenerates the map locally.
 
 Before committing, the staged contents were scanned for Stripe, Clerk, AWS, GitHub, OpenRouter, Anthropic, and Convex deploy-key patterns, and for private keys. The scan found none.
 
@@ -119,10 +120,10 @@ All are tracked in Linear, and none are fixed in Phase 0.
 
 ## Graphify map
 
-The map is at `graphify-out/`. It was built locally from the AST, with no LLM processing and no hooks installed.
+The map is at `graphify-out/`, which is gitignored, so regenerate it with the commands below. It was built locally from the AST, with no LLM processing and no hooks installed.
 
 - **Size:** 304 nodes, 601 edges, 15 communities, built from 46 code files.
-- **Committed:** `graph.json`, `GRAPH_REPORT.md`, and `graph.html`, which is the interactive view.
+- **Outputs:** `graph.json`, `GRAPH_REPORT.md`, and `graph.html`, which is the interactive view. These were committed in `f02fbfa` and are now local only.
 - **Path check:** every node `source_file` resolves to a file in the repo, and no absolute machine paths appear.
 - **Representative nodes:**
   - `components_editor_editor_editor`, which is `Editor()`

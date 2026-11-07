@@ -53,7 +53,7 @@ pnpm exec tsc --noEmit --incremental false
 | `components/` | The editor, sidebar, presence, providers, and UI primitives |
 | `convex/` | Schema (fixed), documents, files, presence, ProseMirror sync, and users |
 | `lib/` | Org auth context (`getOrgContext`), upload helper, and utilities |
-| `graphify-out/` | Code map: `graph.html`, `graph.json`, and `GRAPH_REPORT.md` |
+| `graphify-out/` | Code map, generated locally and gitignored. See [docs/SETUP.md](docs/SETUP.md) |
 | `docs/` | Setup, baseline audit, and roadmap |
 
 ## Docs

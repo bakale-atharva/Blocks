@@ -72,7 +72,7 @@ At the Phase 0 baseline, `tsc` and `build` fail on a known AI SDK type conflict 
 
 ## Code map
 
-Open `graphify-out/graph.html` in a browser to explore the map. To regenerate it after code changes, run:
+`graphify-out/` is gitignored, so generate the map locally, then open `graphify-out/graph.html` in a browser. Run the same commands again after code changes:
 
 ```bash
 graphify extract . --code-only --no-cluster
