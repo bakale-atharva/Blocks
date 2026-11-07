@@ -119,7 +119,7 @@ export default function PageChrome({ docId }: { docId: string }) {
   ) => {
     const file = event.target.files?.[0];
     // Reset the input so selecting the same file again re-triggers change.
-    event.target.value == "";
+    event.target.value = "";
     if (!file) return;
 
     setUploading(true);

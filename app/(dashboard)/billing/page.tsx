@@ -1,4 +1,5 @@
 import { PricingTable } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 
 export const metadata = {
   title: "Billing",
@@ -17,7 +18,10 @@ export const metadata = {
  * `PLAN_LIMITS` and is enforced in Convex (`aiUsage`, M7) — Clerk has no
  * metered billing.
  */
-export default function BillingPage() {
+export default async function BillingPage() {
+  // Resource-level gate (defense in depth alongside the layout's RequireAuth).
+  await auth.protect();
+
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
       <header className="mb-8 space-y-1">

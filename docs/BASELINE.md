@@ -107,7 +107,7 @@ No seeds, migrations, deployments, or database writes were run during Phase 0.
 
 ## Known defects
 
-All are tracked in Linear, and none are fixed in Phase 0.
+All are tracked in Linear, and none are fixed in Phase 0. This table is a historical record. ATH-259 to ATH-262 were resolved in Phase 1 on the `phase-1-compat-authz` branch, along with ATH-265, which migrates off the deprecated Clerk route matcher.
 
 | Issue | Milestone | Defect |
 |---|---|---|

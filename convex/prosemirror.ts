@@ -3,6 +3,7 @@ import { components } from "./_generated/api";
 import type { DataModel, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getOrgContext } from "../lib/auth";
+import { getOrgDoc } from "../lib/docAccess";
 
 /**
  * Collaborative document content for the BlockNote editor, synced through the
@@ -34,10 +35,7 @@ async function assertCanAccessDoc(
   id: Id<"documents">,
 ): Promise<void> {
   const { orgId } = await getOrgContext(ctx);
-  const doc = await ctx.db.get(id);
-  if (!doc || doc.orgId !== orgId) {
-    throw new Error("Unauthorized: document not found in your organization");
-  }
+  await getOrgDoc(ctx, orgId, id);
 }
 
 /**
