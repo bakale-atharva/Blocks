@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getOrgContext, requireMember } from "../lib/auth";
-import { getOrgDoc } from "../lib/docAccess";
+import { getOrgDoc, getWritableOrgDoc } from "../lib/docAccess";
 
 /**
  * Org-scoped document tree + Notion polish (search / favorites / trash).
@@ -41,6 +41,8 @@ const LIST_LIMIT = 200;
 const TRASH_LIMIT = 100;
 const FAVORITES_LIMIT = 100;
 const SEARCH_LIMIT = 20;
+/** Longest title `rename` stores. */
+const MAX_TITLE_LENGTH = 200;
 
 /**
  * Upper bound on documents touched by a single recursive archive/restore so
@@ -81,6 +83,25 @@ export const get = query({
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
     const doc = await ctx.db.get(args.id);
+    if (!doc || doc.orgId !== orgId) return null;
+    return doc;
+  },
+});
+
+/**
+ * A document by an untrusted string id, such as the `/doc/[id]` URL segment.
+ * Returns `null` for a malformed id, another table's id, a missing document,
+ * or another org's document, all alike, so the page can show one "not found"
+ * state without anyone probing for other tenants' ids.
+ */
+export const lookup = query({
+  args: { id: v.string() },
+  returns: v.union(documentValidator, v.null()),
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrgContext(ctx);
+    const id = ctx.db.normalizeId("documents", args.id);
+    if (!id) return null;
+    const doc = await ctx.db.get(id);
     if (!doc || doc.orgId !== orgId) return null;
     return doc;
   },
@@ -340,14 +361,20 @@ export const listTrash = query({
   },
 });
 
-/** Rename a document. */
+/**
+ * Rename a document. The title is trimmed and capped at `MAX_TITLE_LENGTH`;
+ * an empty title is stored as "Untitled". Trashed documents are read-only.
+ */
 export const rename = mutation({
   args: { id: v.id("documents"), title: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
-    await getOrgDoc(ctx, orgId, args.id);
-    await ctx.db.patch(args.id, { title: args.title });
+    const doc = await getWritableOrgDoc(ctx, orgId, args.id);
+    const title = args.title.trim().slice(0, MAX_TITLE_LENGTH) || "Untitled";
+    if (title !== doc.title) {
+      await ctx.db.patch(args.id, { title });
+    }
     return null;
   },
 });
@@ -435,7 +462,7 @@ export const setIcon = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { orgId } = await getOrgContext(ctx);
-    await getOrgDoc(ctx, orgId, args.id);
+    await getWritableOrgDoc(ctx, orgId, args.id);
     await ctx.db.patch(args.id, { icon: args.icon });
     return null;
   },

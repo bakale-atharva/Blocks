@@ -7,7 +7,7 @@ The roadmap is tracked in the Linear project [Blocks](https://linear.app/atharva
 | 0 | Graphify map, project tracking, and a documented, published baseline | — |
 | 1 | Compatible dependencies, exact BlockNote pins, passing baseline checks, hardened tenant authorization, resource-based Clerk auth | ATH-259, ATH-260, ATH-261, ATH-262, ATH-265 |
 | 2 | Organization switching, membership integration, recursive document navigation, search, trash and restore | ATH-266, ATH-267, ATH-268, ATH-269, ATH-270 |
-| 3 | Reliable collaborative editing, uploads, presence, and write protection for archived documents | — |
+| 3 | Reliable collaborative editing, uploads, presence, and write protection for archived documents | ATH-271, ATH-272, ATH-273, ATH-274, ATH-275 |
 | 4 | Organization billing entitlements and server-side usage enforcement | — |
 | 5 | Server-side inline AI through OpenRouter | ATH-263 |
 | 6 | Workspace agent built on `Agent<{ orgId: string }>`, with tenant-scoped tools | ATH-264 |
