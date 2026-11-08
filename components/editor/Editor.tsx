@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useConvex } from "convex/react";
-import { DefaultChatTransport } from "ai";
 import { toast } from "sonner";
 
 import {
@@ -35,7 +34,8 @@ import "@blocknote/xl-ai/style.css";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { createUploadFile, errorMessage } from "@/lib/uploadFile";
-import { useAiEnabled } from "@/components/billing/AiGate";
+import AiGate, { useAiEnabled } from "@/components/billing/AiGate";
+import { useInlineAiTransport } from "@/lib/inlineAiTransport";
 
 /** The ProseMirror JSON every client seeds a new document with. */
 const EMPTY_DOC = { type: "doc", content: [] };
@@ -52,8 +52,9 @@ const SNAPSHOT_DEBOUNCE_MS = 1000;
  *
  * Synced through `@convex-dev/prosemirror-sync` (org-scoped read/write enforced
  * in `convex/prosemirror.ts`). Inline AI is provided by `@blocknote/xl-ai`,
- * which talks to the shared server endpoint at `/api/ai` via the AI SDK
- * `DefaultChatTransport` — no model keys ever reach the client.
+ * which talks to the Convex HTTP action at `<convex site>/api/ai`
+ * (`convex/inlineAi.ts`) with the user's Convex token. The model call runs on
+ * the server through OpenRouter; no model key ever reaches the client.
  *
  * Rendering invariants (see plan.md Phase 3 risks):
  * - `useBlockNoteSync` OWNS editor creation. We never call `useCreateBlockNote`
@@ -73,6 +74,7 @@ export default function Editor({
   // UI-only gate: AI controls render only for orgs whose plan includes AI.
   // The server re-checks the plan and quota on every AI call.
   const aiEnabled = useAiEnabled();
+  const aiTransport = useInlineAiTransport();
 
   // Authenticated upload flow (Convex File Storage) bound to this document.
   // The server validates type and size; its message is shown as a toast.
@@ -106,11 +108,7 @@ export default function Editor({
         ai: aiEn,
       },
       extensions: [
-        AIExtension({
-          transport: new DefaultChatTransport({
-            api: "/api/ai",
-          }),
-        }),
+        AIExtension({ transport: aiTransport }),
       ],
     },
   });
@@ -158,14 +156,18 @@ export default function Editor({
       className="min-h-[40vh]"
     >
       {/* AI command menu (input -> thinking -> writing -> reviewing). */}
-      {aiEnabled ? <AIMenuController /> : null}
+      <AiGate>
+        <AIMenuController />
+      </AiGate>
 
       {/* Formatting toolbar, with the AI button appended when AI is on. */}
       <FormattingToolbarController
         formattingToolbar={() => (
           <FormattingToolbar>
             {getFormattingToolbarItems()}
-            {aiEnabled ? <AIToolbarButton /> : null}
+            <AiGate>
+              <AIToolbarButton />
+            </AiGate>
           </FormattingToolbar>
         )}
       />

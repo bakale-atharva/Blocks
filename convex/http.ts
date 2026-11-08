@@ -5,8 +5,16 @@ import type { UserJSON } from "@clerk/backend";
 import { httpAction } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { inlineAi, preflight } from "./inlineAi";
 
 const http = httpRouter();
+
+/**
+ * Inline AI for the editor. Streaming, CORS-enabled for `APP_ORIGINS`, and
+ * authenticated with the caller's Convex token. See `convex/inlineAi.ts`.
+ */
+http.route({ path: "/api/ai", method: "POST", handler: inlineAi });
+http.route({ path: "/api/ai", method: "OPTIONS", handler: preflight });
 
 /**
  * Clerk webhook. It mirrors users, organizations, and memberships into the
