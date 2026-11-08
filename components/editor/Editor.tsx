@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useConvex } from "convex/react";
 import { DefaultChatTransport } from "ai";
+import { toast } from "sonner";
 
 import {
   BlockNoteEditor,
@@ -32,7 +33,18 @@ import "@blocknote/mantine/style.css";
 import "@blocknote/xl-ai/style.css";
 
 import { api } from "@/convex/_generated/api";
-import { createUploadFile } from "@/lib/uploadFile";
+import type { Id } from "@/convex/_generated/dataModel";
+import { createUploadFile, errorMessage } from "@/lib/uploadFile";
+
+/** The ProseMirror JSON every client seeds a new document with. */
+const EMPTY_DOC = { type: "doc", content: [] };
+
+/**
+ * How long the document must be idle before this client submits a snapshot.
+ * Snapshots only save replaying steps, so this trades a little server work
+ * for faster loads. It matches the component default, stated explicitly.
+ */
+const SNAPSHOT_DEBOUNCE_MS = 1000;
 
 /**
  * Per-document collaborative BlockNote editor.
@@ -49,13 +61,40 @@ import { createUploadFile } from "@/lib/uploadFile";
  *   `next/dynamic({ ssr: false })` from the doc page, never rendered on the
  *   server and never wrapped in `<StrictMode>`.
  */
-export default function Editor({ docId }: { docId: string }) {
+export default function Editor({
+  docId,
+  readOnly,
+}: {
+  docId: Id<"documents">;
+  readOnly: boolean;
+}) {
   const convex = useConvex();
 
-  // Authenticated upload flow (Convex File Storage) bound to the context client.
-  const uploadFile = useMemo(() => createUploadFile(convex), [convex]);
+  // Authenticated upload flow (Convex File Storage) bound to this document.
+  // The server validates type and size; its message is shown as a toast.
+  const uploadFile = useMemo(() => {
+    const upload = createUploadFile(convex, docId);
+    return async (file: File) => {
+      try {
+        return await upload(file);
+      } catch (error) {
+        toast.error(errorMessage(error, "Couldn't upload that file."));
+        throw error;
+      }
+    };
+  }, [convex, docId]);
 
   const sync = useBlockNoteSync<BlockNoteEditor>(api.prosemirror, docId, {
+    snapshotDebounceMs: SNAPSHOT_DEBOUNCE_MS,
+    onSyncError: (error) => {
+      // Most sync errors are retried by the extension. Losing local steps is
+      // the one the user must hear about.
+      if (error.message.includes("could not be flushed")) {
+        toast.error("Some recent edits couldn't be saved.");
+      } else {
+        console.warn("Document sync error", error);
+      }
+    },
     editorOptions: {
       uploadFile,
       dictionary: {
@@ -72,19 +111,35 @@ export default function Editor({ docId }: { docId: string }) {
     },
   });
 
-  // Seed an empty ProseMirror doc the first time we open a never-edited page.
-  // `sync.create` is only present once loading has finished and no doc exists.
+  // Seed an empty ProseMirror doc the first time a never-edited page opens.
+  // `sync` is a new object every render, so without the ref the effect could
+  // call `create` again before the first seed lands. Every client seeds the
+  // same EMPTY_DOC, so two clients racing on one id still converge (the
+  // loser's create fails harmlessly). A trashed page is never seeded: the
+  // server would reject the write.
+  const seededFor = useRef<string | null>(null);
+  const needsSeed = !sync.isLoading && sync.editor === null;
+  const create = needsSeed ? sync.create : undefined;
   useEffect(() => {
-    if (!sync.isLoading && sync.editor === null) {
-      void sync.create({ type: "doc", content: [] });
-    }
-  }, [sync]);
+    if (!create || readOnly || seededFor.current === docId) return;
+    seededFor.current = docId;
+    create(EMPTY_DOC).catch((error: unknown) => {
+      console.warn("Document seed failed", error);
+    });
+  }, [create, readOnly, docId]);
 
   if (sync.isLoading) {
     return <EditorSkeleton />;
   }
 
   if (sync.editor === null) {
+    if (readOnly) {
+      return (
+        <p className="px-1 py-2 text-sm text-muted-foreground">
+          This page is empty.
+        </p>
+      );
+    }
     // Loading finished but the doc is being seeded by the effect above.
     return <EditorSkeleton />;
   }
@@ -92,6 +147,7 @@ export default function Editor({ docId }: { docId: string }) {
   return (
     <BlockNoteView
       editor={sync.editor}
+      editable={!readOnly}
       // We supply our own toolbar + slash menu so we can splice in AI items.
       formattingToolbar={false}
       slashMenu={false}
@@ -130,10 +186,10 @@ export default function Editor({ docId }: { docId: string }) {
 function EditorSkeleton() {
   return (
     <div className="flex flex-col gap-3 px-1 py-2" aria-hidden>
-      <div className="h-7 w-2/3 animate-pulse round bg-muted" />
-      <div className="h-4 w-full animate-pulse round bg-muted" />
-      <div className="h-4 w-5/6 animate-pulse round bg-muted" />
-      <div className="h-4 w-4/6 animate-pulse round bg-muted" />
+      <div className="h-7 w-2/3 animate-pulse rounded bg-muted" />
+      <div className="h-4 w-full animate-pulse rounded bg-muted" />
+      <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
+      <div className="h-4 w-4/6 animate-pulse rounded bg-muted" />
     </div>
   );
 }

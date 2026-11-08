@@ -33,6 +33,56 @@ import {
   startDocumentDrag,
   useDocumentDrop,
 } from "@/components/sidebar/useDocumentDrop";
+import { useOnlinePeople } from "@/lib/presenceStore";
+
+/** How many collaborator avatars a sidebar row shows before "+N". */
+const ROW_AVATAR_LIMIT = 3;
+
+/**
+ * Small avatars of the people in this document right now. Only the open
+ * document publishes presence (`DocPresence`), so every other row renders
+ * nothing and costs no subscription.
+ */
+function RowPresence({ docId }: { docId: string }) {
+  const people = useOnlinePeople(docId);
+  if (people.length === 0) return null;
+
+  const shown = people.slice(0, ROW_AVATAR_LIMIT);
+  const extra = people.length - shown.length;
+  const label = `${people.length} ${people.length === 1 ? "person" : "people"} here: ${people
+    .map((p) => p.name ?? "Someone")
+    .join(", ")}`;
+
+  return (
+    <span
+      className="flex shrink-0 items-center -space-x-1.5 group-hover/item:hidden group-focus-within/item:hidden"
+      aria-label={label}
+      title={label}
+    >
+      {shown.map((person) =>
+        person.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={person.userId}
+            src={person.image}
+            alt=""
+            className="size-4 rounded-full ring-2 ring-background"
+          />
+        ) : (
+          <span
+            key={person.userId}
+            className="flex size-4 items-center justify-center rounded-full bg-muted text-[9px] font-medium ring-2 ring-background"
+          >
+            {(person.name ?? "?").slice(0, 1).toUpperCase()}
+          </span>
+        ),
+      )}
+      {extra > 0 ? (
+        <span className="pl-2 text-[10px] text-muted-foreground">+{extra}</span>
+      ) : null}
+    </span>
+  );
+}
 
 /**
  * A single node in the recursive document tree.
@@ -210,6 +260,8 @@ export default function DocumentItem({
             {document.title || "Untitled"}
           </span>
         )}
+
+        {!isRenaming && <RowPresence docId={document._id} />}
 
         {!isRenaming && (
           <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover/item:opacity-100 group-focus-within/item:opacity-100">

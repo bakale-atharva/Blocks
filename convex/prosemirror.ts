@@ -1,9 +1,9 @@
 import { ProsemirrorSync } from "@convex-dev/prosemirror-sync";
 import { components } from "./_generated/api";
 import type { DataModel, Id } from "./_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { getOrgContext } from "../lib/auth";
-import { getOrgDoc } from "../lib/docAccess";
+import { getOrgDoc, getWritableOrgDoc } from "../lib/docAccess";
 
 /**
  * Collaborative document content for the BlockNote editor, synced through the
@@ -25,13 +25,11 @@ const prosemirrorSync = new ProsemirrorSync<Id<"documents">>(
 );
 
 /**
- * Throw unless the caller's active org owns the document `id`.
- *
- * Shared by `checkRead` (QueryCtx) and `checkWrite` (MutationCtx). Both context
- * types expose `auth` and `db.get`, so a single helper covers both.
+ * Throw unless the caller's active org owns the document `id`. Used by
+ * `checkRead`; `checkWrite` additionally rejects archived documents.
  */
 async function assertCanAccessDoc(
-  ctx: QueryCtx | MutationCtx,
+  ctx: QueryCtx,
   id: Id<"documents">,
 ): Promise<void> {
   const { orgId } = await getOrgContext(ctx);
@@ -82,8 +80,14 @@ export const {
     await assertCanAccessDoc(ctx, id);
   },
   checkWrite: async (ctx, id) => {
-    await assertCanAccessDoc(ctx, id);
+    // Writes need more than org ownership: a trashed document is read-only
+    // until it's restored, so steps and snapshots for it are rejected here.
+    const { orgId } = await getOrgContext(ctx);
+    await getWritableOrgDoc(ctx, orgId, id);
   },
+  // Keep the original and newest snapshots only (the component default),
+  // stated explicitly so the storage behavior is visible here.
+  pruneSnapshots: true,
   onSnapshot: async (ctx, id, snapshot) => {
     // Mirror the latest text content for search. Guard against a racing
     // archive/delete by confirming the row still exists and is owned by the

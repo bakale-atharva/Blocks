@@ -1,5 +1,6 @@
 import type { MutationCtx, QueryCtx } from "../convex/_generated/server";
 import type { Doc, Id } from "../convex/_generated/dataModel";
+import { ConvexError } from "convex/values";
 
 /**
  * The one tenant-ownership check for `documents` rows.
@@ -20,6 +21,29 @@ export async function getOrgDoc(
   const doc = await ctx.db.get(id);
   if (!doc || doc.orgId !== orgId) {
     throw new Error(DOC_NOT_FOUND);
+  }
+  return doc;
+}
+
+export const DOC_ARCHIVED =
+  "This page is in the trash. Restore it to make changes.";
+
+/**
+ * `getOrgDoc` for writes: it also rejects a trashed document. Every
+ * mutation that changes a document's content or metadata goes through this,
+ * so an archived document stays read-only until it's restored.
+ *
+ * The error is a `ConvexError`, so the client receives its message even in
+ * production, where plain `Error` messages are redacted.
+ */
+export async function getWritableOrgDoc(
+  ctx: QueryCtx | MutationCtx,
+  orgId: string,
+  id: Id<"documents">,
+): Promise<Doc<"documents">> {
+  const doc = await getOrgDoc(ctx, orgId, id);
+  if (doc.isArchived) {
+    throw new ConvexError(DOC_ARCHIVED);
   }
   return doc;
 }
