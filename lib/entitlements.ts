@@ -22,8 +22,13 @@ import { getOrgContext } from "./auth";
 /** The Clerk Billing feature slug that unlocks AI on a plan. */
 export const AI_FEATURE = "ai_enabled";
 
-/** Monthly AI calls allowed per organization plan slug. */
+/**
+ * Monthly AI calls allowed per organization plan slug. `free_org` is the slug
+ * Clerk gives its built-in default organization plan; `free` is kept for a
+ * Free plan created by hand.
+ */
 export const PLAN_LIMITS = {
+  free_org: 0,
   free: 0,
   pro: 500,
   business: 5000,

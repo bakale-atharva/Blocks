@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 const PLAN_NAMES: Record<string, string> = {
+  free_org: "Free",
   free: "Free",
   pro: "Pro",
   business: "Business",
