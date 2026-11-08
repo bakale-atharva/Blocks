@@ -9,7 +9,7 @@ The roadmap is tracked in the Linear project [Blocks](https://linear.app/atharva
 | 2 | Organization switching, membership integration, recursive document navigation, search, trash and restore | ATH-266, ATH-267, ATH-268, ATH-269, ATH-270 |
 | 3 | Reliable collaborative editing, uploads, presence, and write protection for archived documents | ATH-271, ATH-272, ATH-273, ATH-274, ATH-275 |
 | 4 | Organization billing entitlements and server-side usage enforcement ([docs/BILLING.md](BILLING.md)) | ATH-276, ATH-277, ATH-278 |
-| 5 | Server-side inline AI through OpenRouter | ATH-263 |
+| 5 | Server-side inline AI through OpenRouter, as a Convex HTTP action (`/api/ai`) | ATH-263, ATH-279 |
 | 6 | Workspace agent built on `Agent<{ orgId: string }>`, with tenant-scoped tools | ATH-264 |
 | 7 | End-to-end verification, accessibility, failure handling, and production readiness | — |
 

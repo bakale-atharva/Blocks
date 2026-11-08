@@ -32,6 +32,13 @@ Set these on the Convex deployment, not in `.env.local`:
 |---|---|
 | `CLERK_FRONTEND_API_URL` | The Clerk issuer domain, read by `convex/auth.config.ts` |
 | `CLERK_WEBHOOK_SIGNING_SECRET` | The signing secret of the Clerk webhook endpoint, read by `convex/http.ts` |
+| `OPENROUTER_API_KEY` | The OpenRouter key for inline AI, read by `convex/inlineAi.ts`. It never leaves the server |
+| `OPENROUTER_MODEL` | Optional. The OpenRouter model id for inline AI. Defaults to `nvidia/nemotron-3.5-super-vl:free`. It must be a `:free` model that supports `tools` and `tool_choice`; other ids are refused |
+| `APP_ORIGINS` | Comma-separated browser origins allowed to call `/api/ai` (CORS). Defaults to `http://localhost:3000`. Add your production origin before deploying |
+
+Without `OPENROUTER_API_KEY`, or with an `OPENROUTER_MODEL` that isn't a `:free` model, `/api/ai` returns 500 `AiNotConfigured` and no quota is used.
+
+Other free models that support tool calling include `nvidia/nemotron-3.5-lightning:free` (faster) and `nvidia/nemotron-3-ultra-550b-a55b:free` (largest). Free models are rate-limited by OpenRouter.
 
 To set them on the deployment, run:
 
@@ -42,6 +49,25 @@ npx convex env set CLERK_FRONTEND_API_URL <your-clerk-frontend-api-url>
 ```bash
 npx convex env set CLERK_WEBHOOK_SIGNING_SECRET <your-webhook-signing-secret>
 ```
+
+```bash
+npx convex env set OPENROUTER_API_KEY <your-openrouter-key>
+```
+
+```bash
+npx convex env set OPENROUTER_MODEL nvidia/nemotron-3.5-super-vl:free
+```
+
+## Inline AI
+
+The editor's AI menu posts to the Convex HTTP action `https://<your-deployment>.convex.site/api/ai`, with the user's Convex token as a bearer token. The endpoint:
+
+1. Returns 401 `Unauthenticated` without a signed-in user and an active organization.
+2. Returns 500 `AiNotConfigured` when the key is missing or the model isn't a `:free` model.
+3. Records one AI call against the organization's monthly quota. It returns 403 `AiNotEnabled` on a plan without AI, and 429 `QuotaExceeded` at the limit (see [BILLING.md](BILLING.md)).
+4. Streams the model's edits back. The client shows them as suggestions to accept or reject.
+
+The editor shows the server's message as a toast when a call is refused.
 
 ## Clerk configuration
 

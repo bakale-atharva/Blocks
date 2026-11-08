@@ -13,6 +13,7 @@ import type * as clerkSync from "../clerkSync.js";
 import type * as documents from "../documents.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
+import type * as inlineAi from "../inlineAi.js";
 import type * as presence from "../presence.js";
 import type * as prosemirror from "../prosemirror.js";
 import type * as seed from "../seed.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   files: typeof files;
   http: typeof http;
+  inlineAi: typeof inlineAi;
   presence: typeof presence;
   prosemirror: typeof prosemirror;
   seed: typeof seed;
