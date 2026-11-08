@@ -19,7 +19,8 @@ import { AI_NOT_ENABLED, QUOTA_EXCEEDED } from "./aiUsage";
  * the user's Convex token as `Authorization: Bearer …`. In order, it:
  *
  *  1. derives the org from the token (`getOrgContext`), or returns 401;
- *  2. checks the server is configured (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`);
+ *  2. checks the server is configured (`OPENROUTER_API_KEY`, and a `:free`
+ *     model from `OPENROUTER_MODEL` or `DEFAULT_MODEL`);
  *  3. records one AI call (`aiUsage.consume`), which re-checks the plan's
  *     `ai_enabled` feature and the monthly quota: 403 or 429 when refused;
  *  4. streams the model's tool calls back as an AI SDK UI message stream.
@@ -27,6 +28,22 @@ import { AI_NOT_ENABLED, QUOTA_EXCEEDED } from "./aiUsage";
  * The OpenRouter key exists only as a Convex env var. The browser never
  * talks to OpenRouter.
  */
+
+/**
+ * The model used when `OPENROUTER_MODEL` is unset: a free NVIDIA model on
+ * OpenRouter that supports tool calling with `tool_choice`, which xl-ai
+ * needs (`toolChoice: "required"`).
+ */
+export const DEFAULT_MODEL = "nvidia/nemotron-3.5-super-vl:free";
+
+/**
+ * Only OpenRouter's free variants are allowed, so a paid model can't be
+ * switched on by an env var change alone. Remove this check to allow paid
+ * models.
+ */
+export function isFreeModel(modelId: string): boolean {
+  return modelId.endsWith(":free");
+}
 
 /** Largest request body accepted, in characters. The document state rides along in it. */
 const MAX_BODY_CHARS = 2_000_000;
@@ -124,9 +141,13 @@ export const inlineAi = httpAction(async (ctx, request) => {
   // 2. Configuration. Checked before consuming quota so a misconfigured
   // deployment never burns calls.
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const modelId = process.env.OPENROUTER_MODEL;
-  if (!apiKey || !modelId) {
-    console.error("OPENROUTER_API_KEY or OPENROUTER_MODEL is not set");
+  const modelId = process.env.OPENROUTER_MODEL?.trim() || DEFAULT_MODEL;
+  if (!apiKey || !isFreeModel(modelId)) {
+    console.error(
+      !apiKey
+        ? "OPENROUTER_API_KEY is not set"
+        : `OPENROUTER_MODEL "${modelId}" is not a :free model`,
+    );
     return jsonError(
       request,
       500,
