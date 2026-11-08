@@ -1,26 +1,29 @@
 import { PricingTable } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 
+import AiUsageMeter from "@/components/billing/AiUsageMeter";
+
 export const metadata = {
   title: "Billing",
   description: "Manage your organization's plan and AI entitlements.",
 };
 
 /**
- * Org-scoped billing page. Renders Clerk's `<PricingTable />` with
- * `for="organization"` so plans/subscriptions are attached to the *active
- * organization* (B2B billing) rather than the individual user.
+ * Org-scoped billing page.
  *
- * Plans are configured in the Clerk Dashboard (Billing → Plans, scoped to
- * organizations) as Free / Pro / Business, with a boolean `ai_enabled` feature
- * on the paid tiers. That feature is what `<AiGate>` and `readAiEntitlement()`
- * (`lib/entitlements.ts`) gate on. The numeric AI quota per tier lives in
- * `PLAN_LIMITS` and is enforced in Convex (`aiUsage`, M7) — Clerk has no
- * metered billing.
+ * Every member sees the organization's AI usage for the month. Only org
+ * admins see Clerk's `<PricingTable for="organization" />`, which is where
+ * the plan is changed.
+ *
+ * Plans are configured in the Clerk Dashboard (Billing → Plans, for
+ * organizations) as Free / Pro / Business, with the `ai_enabled` feature on
+ * the paid plans. The monthly AI quota per plan is `PLAN_LIMITS` in
+ * `lib/entitlements.ts`, enforced in Convex by `convex/aiUsage.ts`.
  */
 export default async function BillingPage() {
   // Resource-level gate (defense in depth alongside the layout's RequireAuth).
-  await auth.protect();
+  const { has } = await auth.protect();
+  const isAdmin = has({ role: "org:admin" });
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
@@ -29,12 +32,22 @@ export default async function BillingPage() {
           Billing
         </h1>
         <p className="text-sm text-muted-foreground">
-          Choose a plan for your organization. Paid plans unlock the workspace
-          AI Assistant & inline AI writing tools.
+          Paid plans unlock inline AI writing and the workspace assistant.
         </p>
       </header>
 
-      <PricingTable for="organization" />
+      <div className="mb-8">
+        <AiUsageMeter />
+      </div>
+
+      {isAdmin ? (
+        <PricingTable for="organization" />
+      ) : (
+        <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+          Only organization admins can change the plan. Ask an admin to
+          upgrade if your team needs more AI calls.
+        </p>
+      )}
     </div>
   );
 }

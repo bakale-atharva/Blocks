@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as aiUsage from "../aiUsage.js";
 import type * as clerkSync from "../clerkSync.js";
 import type * as documents from "../documents.js";
 import type * as files from "../files.js";
@@ -24,6 +25,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  aiUsage: typeof aiUsage;
   clerkSync: typeof clerkSync;
   documents: typeof documents;
   files: typeof files;

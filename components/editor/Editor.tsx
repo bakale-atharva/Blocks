@@ -35,6 +35,7 @@ import "@blocknote/xl-ai/style.css";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { createUploadFile, errorMessage } from "@/lib/uploadFile";
+import { useAiEnabled } from "@/components/billing/AiGate";
 
 /** The ProseMirror JSON every client seeds a new document with. */
 const EMPTY_DOC = { type: "doc", content: [] };
@@ -69,6 +70,9 @@ export default function Editor({
   readOnly: boolean;
 }) {
   const convex = useConvex();
+  // UI-only gate: AI controls render only for orgs whose plan includes AI.
+  // The server re-checks the plan and quota on every AI call.
+  const aiEnabled = useAiEnabled();
 
   // Authenticated upload flow (Convex File Storage) bound to this document.
   // The server validates type and size; its message is shown as a toast.
@@ -154,27 +158,29 @@ export default function Editor({
       className="min-h-[40vh]"
     >
       {/* AI command menu (input -> thinking -> writing -> reviewing). */}
-      <AIMenuController />
+      {aiEnabled ? <AIMenuController /> : null}
 
-      {/* Formatting toolbar with the AI button appended to the defaults. */}
+      {/* Formatting toolbar, with the AI button appended when AI is on. */}
       <FormattingToolbarController
         formattingToolbar={() => (
           <FormattingToolbar>
             {getFormattingToolbarItems()}
-            <AIToolbarButton />
+            {aiEnabled ? <AIToolbarButton /> : null}
           </FormattingToolbar>
         )}
       />
 
-      {/* Slash menu merging the default React items with the AI items. */}
+      {/* Slash menu: the default React items, plus the AI items when AI is on. */}
       <SuggestionMenuController
         triggerCharacter="/"
         getItems={async (query) =>
           filterSuggestionItems(
-            combineByGroup(
-              getDefaultReactSlashMenuItems(sync.editor),
-              getAISlashMenuItems(sync.editor),
-            ),
+            aiEnabled
+              ? combineByGroup(
+                  getDefaultReactSlashMenuItems(sync.editor),
+                  getAISlashMenuItems(sync.editor),
+                )
+              : getDefaultReactSlashMenuItems(sync.editor),
             query,
           )
         }
